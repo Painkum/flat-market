@@ -65,6 +65,9 @@ export function filterCollectibles(
 
   if (opts.sort === "low") {
     next = [...next].sort((a, b) => Number(a.priceWei ?? Infinity) - Number(b.priceWei ?? Infinity));
+  } else if (opts.sort === "scarce") {
+    const left = (item: Collectible) => (item.maxSupply > 0 ? (item.maxSupply - item.minted) / item.maxSupply : 1);
+    next = [...next].sort((a, b) => left(a) - left(b));
   } else if (opts.sort === "high") {
     next = [...next].sort((a, b) => Number(b.priceWei ?? 0) - Number(a.priceWei ?? 0));
   } else {

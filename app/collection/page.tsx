@@ -9,6 +9,9 @@ import { collectionAddress } from "@/lib/contracts/addresses";
 import { collectionAbi, redemptionAbi } from "@/lib/contracts/abis";
 import { redemptionAddress } from "@/lib/contracts/addresses";
 import type { Collectible } from "@/lib/types";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { WalletGate } from "@/components/wallet/WalletGate";
+import { cx } from "@/lib/utils/format";
 
 const TABS = ["owned", "listed", "redeemed", "expired", "unlisted"] as const;
 
@@ -60,28 +63,46 @@ export default function MyCollectionPage() {
   }, [ownedQuery.data, address]);
 
   if (!isConnected) {
-    return <p>Connect a wallet to see collectibles you own.</p>;
+    return (
+      <WalletGate
+        title="Your collection lives in your wallet"
+        body="Connect a wallet to see the passes, tickets, and vouchers you hold — plus what you have redeemed or listed."
+      />
+    );
   }
 
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <p className="text-xs tracking-[0.2em] text-ink-soft uppercase">Wallet</p>
-        <h1 className="display mt-2 text-5xl">My collection</h1>
-      </div>
-      <div className="flex flex-wrap gap-2">
+      <PageHeader eyebrow="Wallet" title="My collection" />
+      <div className="no-scrollbar -mx-4 flex gap-1 overflow-x-auto border-b border-line px-4 sm:mx-0 sm:px-0" role="tablist">
         {TABS.map((item) => (
           <button
             key={item}
             type="button"
+            role="tab"
+            aria-selected={tab === item}
             onClick={() => setTab(item)}
-            className={`h-11 px-4 capitalize ${tab === item ? "bg-ink text-paper" : "border border-line"}`}
+            className={cx(
+              "relative flex h-12 shrink-0 items-center gap-2 px-4 capitalize transition-colors duration-200",
+              tab === item ? "text-ink" : "text-ink-soft hover:text-ink"
+            )}
           >
             {item}
+            <span className={cx("font-mono text-[11px]", tab === item ? "text-accent" : "text-ink-soft")}>
+              {grouped[item].length}
+            </span>
+            <span
+              aria-hidden="true"
+              className={cx(
+                "absolute inset-x-0 -bottom-px h-[2px] bg-ink transition-transform duration-300",
+                tab === item ? "scale-x-100" : "scale-x-0"
+              )}
+            />
           </button>
         ))}
       </div>
       <CatalogGrid
+        key={tab}
         items={grouped[tab]}
         loading={isLoading || ownedQuery.isLoading}
         empty="No collectibles in this state for the connected wallet."

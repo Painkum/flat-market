@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useAccount, useSwitchChain } from "wagmi";
 import { FAUCET_URL, TARGET_CHAIN, TARGET_CHAIN_ID } from "@/lib/web3/chain";
 import { contractsConfigured } from "@/lib/contracts/addresses";
@@ -8,11 +9,21 @@ export function NetworkBanner() {
   const { isConnected, chainId } = useAccount();
   const { switchChain } = useSwitchChain();
   const wrong = isConnected && chainId !== TARGET_CHAIN_ID;
+  const [dismissed, setDismissed] = useState(false);
+
+  useEffect(() => {
+    try {
+      setDismissed(window.sessionStorage.getItem("flatmarket:banner") === "1");
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   if (!wrong && contractsConfigured) return null;
+  if (!wrong && dismissed) return null;
 
   return (
-    <div className="border-b border-line bg-paper-raised">
+    <div className="animate-fade-in border-b border-line bg-paper-raised">
       <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
         {wrong ? (
           <>
@@ -34,6 +45,7 @@ export function NetworkBanner() {
                 ? `Live on ${TARGET_CHAIN.name}. Need test ETH?`
                 : "Contracts are not deployed yet. Demo collectibles are labeled. Deploy to Robinhood Chain testnet to enable minting, buying, and redemption."}
             </p>
+            <div className="flex shrink-0 items-center gap-2">
             {TARGET_CHAIN.testnet ? (
               <a
                 href={FAUCET_URL}
@@ -44,6 +56,22 @@ export function NetworkBanner() {
                 Testnet faucet
               </a>
             ) : null}
+            <button
+              type="button"
+              aria-label="Dismiss notice"
+              onClick={() => {
+                setDismissed(true);
+                try {
+                  window.sessionStorage.setItem("flatmarket:banner", "1");
+                } catch {
+                  /* ignore */
+                }
+              }}
+              className="h-11 w-11 text-lg text-ink-soft hover:text-ink"
+            >
+              ×
+            </button>
+            </div>
           </>
         )}
       </div>

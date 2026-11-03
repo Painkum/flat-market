@@ -124,6 +124,12 @@ The result includes eligibility, ownership, expiry, redemption counts, and utili
 - Access verification API
 - Pinata upload adapter
 - Labeled demo catalog for local browsing
+- Dynamic front end: animated hero with rotating spotlight and live stats, listing ticker, scroll reveals
+- Ctrl/⌘K search palette across collectibles, categories, and pages
+- Marketplace filters synced to the URL (shareable), category counts, price range, grid/list view
+- Watchlist (saved per browser) with header counter and `/watchlist` page
+- Collectible pages with supply bars, live expiry countdowns, image zoom, share, and related items
+- Creator studio with step tabs, drag-and-drop uploads, and a live preview card
 
 ## Incomplete / external
 
