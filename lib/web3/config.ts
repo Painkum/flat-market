@@ -1,14 +1,14 @@
 import { createConfig, http } from "wagmi";
-import { TARGET_CHAIN } from "@/lib/web3/chain";
+import { robinhoodChain, robinhoodTestnet, TARGET_CHAIN } from "@/lib/web3/chain";
 import { injected } from "@/lib/web3/injected";
 
-const rpcUrl = TARGET_CHAIN.rpcUrls.default.http[0];
 
 export const wagmiConfig = createConfig({
   chains: [TARGET_CHAIN],
-  connectors: [injected({ shimDisconnect: true })],
+  connectors: [injected()],
   transports: {
-    [TARGET_CHAIN.id]: http(rpcUrl),
+    [robinhoodChain.id]: http(robinhoodChain.rpcUrls.default.http[0]),
+    [robinhoodTestnet.id]: http(robinhoodTestnet.rpcUrls.default.http[0]),
   },
   ssr: true,
 });

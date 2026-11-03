@@ -12,9 +12,13 @@
   --warn: #9a5b12;
   --demo: #6d5330;
   --focus: #c44521;
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-instrument), ui-serif, Georgia, serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+}
+
+/* next/font sets --font-geist-* on <body>, so the font tokens must resolve there, not on :root. */
+body {
+  --font-body: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-serif-display: var(--font-instrument), ui-serif, Georgia, serif;
+  --font-code: var(--font-geist-mono), ui-monospace, monospace;
 }
 
 @theme inline {
@@ -28,9 +32,41 @@
   --color-ok: var(--ok);
   --color-warn: var(--warn);
   --color-demo: var(--demo);
-  --font-sans: var(--font-sans);
-  --font-display: var(--font-display);
-  --font-mono: var(--font-mono);
+  --font-sans: var(--font-body);
+  --font-display: var(--font-serif-display);
+  --font-mono: var(--font-code);
+
+  --animate-fade-up: fade-up 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  --animate-fade-in: fade-in 0.4s ease both;
+  --animate-scale-in: scale-in 0.22s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  --animate-toast-in: toast-in 0.35s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  --animate-marquee: marquee 40s linear infinite;
+  --animate-word: word 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(18px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes scale-in {
+    from { opacity: 0; transform: scale(0.96) translateY(6px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes toast-in {
+    from { opacity: 0; transform: translateX(24px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+  @keyframes word {
+    from { opacity: 0; transform: translateY(0.4em) rotate(-2deg); filter: blur(4px); }
+    to { opacity: 1; transform: none; filter: none; }
+  }
 }
 
 @media (prefers-color-scheme: dark) {
@@ -48,42 +84,106 @@
   }
 }
 
-* {
-  box-sizing: border-box;
+/* Base element styles live in the base layer so Tailwind utilities can override them. */
+@layer base {
+  html,
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body);
+  }
+
+  body {
+    min-height: 100vh;
+    overflow-x: clip;
+  }
+
+  a {
+    color: inherit;
+  }
+
+  button,
+  [role="button"] {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 3px;
+  }
 }
 
-html,
-body {
-  background: var(--paper);
-  color: var(--ink);
-  font-family: var(--font-sans);
+@layer components {
+  .display {
+    font-family: var(--font-serif-display);
+    font-weight: 400;
+    letter-spacing: -0.02em;
+  }
 }
 
-body {
-  min-height: 100vh;
+/* Paper grain, kept very faint so it reads as texture rather than noise. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
-a {
-  color: inherit;
+@keyframes toast-timer {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
 }
 
-button,
-[role="button"] {
-  cursor: pointer;
+::selection {
+  background: var(--accent);
+  color: var(--paper-raised);
 }
 
-:focus-visible {
-  outline: 2px solid var(--focus);
-  outline-offset: 3px;
+/* Scroll-reveal: elements start hidden and animate once in view (see components/ui/Reveal.tsx). */
+.reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition:
+    opacity 0.7s cubic-bezier(0.2, 0.7, 0.2, 1),
+    transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+.reveal[data-shown="true"] {
+  opacity: 1;
+  transform: none;
 }
 
-.display {
-  font-family: var(--font-display);
-  font-weight: 400;
-  letter-spacing: -0.02em;
+.link-underline {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-size: 0% 1px;
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  transition: background-size 0.3s ease;
+}
+.link-underline:hover {
+  background-size: 100% 1px;
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+  }
+
   *,
   *::before,
   *::after {

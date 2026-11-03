@@ -41,20 +41,22 @@ export async function loadOnchainCatalog(client: PublicClient): Promise<{
   if (!collectionAddress || !marketplaceAddress) {
     return { collections: [], collectibles: [] };
   }
+  const collectionContract = collectionAddress;
+  const marketplaceContract = marketplaceAddress;
 
   const [nextCollectionId, nextTokenId, nextListingId] = await Promise.all([
     client.readContract({
-      address: collectionAddress,
+      address: collectionContract,
       abi: collectionAbi,
       functionName: "nextCollectionId",
     }),
     client.readContract({
-      address: collectionAddress,
+      address: collectionContract,
       abi: collectionAbi,
       functionName: "nextTokenId",
     }),
     client.readContract({
-      address: marketplaceAddress,
+      address: marketplaceContract,
       abi: marketplaceAbi,
       functionName: "nextListingId",
     }),
@@ -67,7 +69,7 @@ export async function loadOnchainCatalog(client: PublicClient): Promise<{
   const collectionRows = await Promise.all(
     collectionIds.map(async (id) => {
       const row = await client.readContract({
-        address: collectionAddress,
+        address: collectionContract,
         abi: collectionAbi,
         functionName: "getCollection",
         args: [BigInt(id)],
@@ -96,13 +98,13 @@ export async function loadOnchainCatalog(client: PublicClient): Promise<{
     tokenIds.map(async (tokenId) => {
       const [edition, minted] = await Promise.all([
         client.readContract({
-          address: collectionAddress,
+          address: collectionContract,
           abi: collectionAbi,
           functionName: "getEdition",
           args: [BigInt(tokenId)],
         }),
         client.readContract({
-          address: collectionAddress,
+          address: collectionContract,
           abi: collectionAbi,
           functionName: "totalSupply",
           args: [BigInt(tokenId)],
@@ -116,7 +118,7 @@ export async function loadOnchainCatalog(client: PublicClient): Promise<{
     listingIds.map(async (listingId) => {
       try {
         const listing = await client.readContract({
-          address: marketplaceAddress,
+          address: marketplaceContract,
           abi: marketplaceAbi,
           functionName: "getListing",
           args: [BigInt(listingId)],

@@ -18,6 +18,23 @@ import { formatEth } from "@/lib/utils/format";
 import { useToast } from "@/components/transactions/TxToast";
 import { loadAccess } from "@/lib/web3/load-catalog";
 import { useQuery } from "@tanstack/react-query";
+import { ConnectWallet } from "@/components/wallet/ConnectWallet";
+
+function Locked({ title, body, children }: { title: string; body: string; children?: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-3 border border-dashed border-ink-soft p-5">
+      <div className="flex items-center gap-3">
+        <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0 text-ink-soft" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+          <rect x="5" y="11" width="14" height="9" />
+          <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+        </svg>
+        <p className="font-medium">{title}</p>
+      </div>
+      <p className="text-sm text-ink-soft">{body}</p>
+      {children}
+    </div>
+  );
+}
 
 export function CollectibleActions({
   item,
@@ -72,30 +89,38 @@ export function CollectibleActions({
 
   if (item.source === "demo") {
     return (
-      <div className="border border-line p-5">
-        <p className="text-sm text-ink-soft">
-          This is labeled demo content. It is not an on-chain listing. Deploy the contracts and mint a live edition to buy, list, or redeem.
-        </p>
-      </div>
+      <Locked
+        title="Demo listing"
+        body="This is labeled demo content, not an on-chain listing. Deploy the contracts and mint a live edition to buy, list, or redeem."
+      >
+        <button type="button" disabled className="h-12 cursor-not-allowed bg-ink/10 text-sm font-medium text-ink-soft">
+          Buy now · {formatEth(item.priceWei)}
+        </button>
+      </Locked>
     );
   }
 
   if (!contractsConfigured || !item.tokenId) {
     return (
-      <div className="border border-line p-5 text-sm text-ink-soft">
-        Contract addresses are missing. Set them in `.env.local` after deploying to Robinhood Chain testnet.
-      </div>
+      <Locked
+        title="Contracts not configured"
+        body="Contract addresses are missing. Set them in .env.local after deploying to Robinhood Chain testnet."
+      />
     );
   }
 
   if (!isConnected) {
     return (
-      <div className="border border-line p-5 text-sm">Connect a wallet to buy, list, transfer, or redeem.</div>
+      <Locked title="Connect to trade" body="Connect a wallet to buy, list, transfer, or redeem.">
+        <div>
+          <ConnectWallet />
+        </div>
+      </Locked>
     );
   }
 
   if (chainId !== TARGET_CHAIN_ID) {
-    return <div className="border border-accent p-5 text-sm">Switch to Robinhood Chain testnet to continue.</div>;
+    return <Locked title="Wrong network" body="Switch to Robinhood Chain testnet to continue." />;
   }
 
   const maxBuy = item.listedAmount ?? 0;
@@ -108,27 +133,47 @@ export function CollectibleActions({
     !accessQuery.data.expired;
 
   return (
-    <div className="flex flex-col gap-4 border border-line p-5">
+    <div className="flex flex-col gap-4 border border-ink p-5">
       {canBuy ? (
         <div>
           <label className="text-xs tracking-wide text-ink-soft uppercase" htmlFor="qty">
             Quantity
           </label>
           <div className="mt-2 flex gap-2">
-            <input
-              id="qty"
-              type="number"
-              min={1}
-              max={maxBuy}
-              value={qty}
-              onChange={(event) => setQty(Number(event.target.value))}
-              className="h-11 w-24 border border-line bg-paper-raised px-3"
-            />
+            <div className="flex h-12 border border-line bg-paper-raised">
+              <button
+                type="button"
+                aria-label="Decrease quantity"
+                disabled={qty <= 1}
+                onClick={() => setQty((value) => Math.max(1, value - 1))}
+                className="w-10 text-lg transition-colors hover:bg-paper disabled:opacity-30"
+              >
+                −
+              </button>
+              <input
+                id="qty"
+                type="number"
+                min={1}
+                max={maxBuy}
+                value={qty}
+                onChange={(event) => setQty(Math.min(maxBuy, Math.max(1, Number(event.target.value) || 1)))}
+                className="w-12 [appearance:textfield] bg-transparent text-center font-mono [&::-webkit-inner-spin-button]:appearance-none"
+              />
+              <button
+                type="button"
+                aria-label="Increase quantity"
+                disabled={qty >= maxBuy}
+                onClick={() => setQty((value) => Math.min(maxBuy, value + 1))}
+                className="w-10 text-lg transition-colors hover:bg-paper disabled:opacity-30"
+              >
+                +
+              </button>
+            </div>
             <button
               type="button"
               disabled={busy || isPending}
               onClick={() => setConfirm("buy")}
-              className="h-11 flex-1 bg-accent text-sm font-medium text-paper-raised transition-colors duration-200 hover:bg-accent-dark disabled:opacity-50"
+              className="h-12 flex-1 bg-accent text-sm font-medium text-paper-raised transition-colors duration-200 hover:bg-accent-dark disabled:opacity-50"
             >
               Buy now · {formatEth(BigInt(item.priceWei ?? "0") * BigInt(qty || 1))}
             </button>
@@ -247,8 +292,15 @@ export function CollectibleActions({
       ) : null}
 
       {confirm ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/50 p-4">
-          <div className="w-full max-w-md border border-line bg-paper p-6">
+        <div
+          className="fixed inset-0 z-[70] flex animate-fade-in items-center justify-center bg-black/55 p-4 backdrop-blur-[2px]"
+          role="dialog"
+          aria-modal="true"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !busy) setConfirm(null);
+          }}
+        >
+          <div className="w-full max-w-md animate-scale-in border border-ink bg-paper p-6 shadow-[10px_10px_0_0_var(--ink)]">
             <h2 className="display text-3xl">Confirm {confirm}</h2>
             <p className="mt-3 text-sm text-ink-soft">
               {confirm === "buy"
@@ -315,7 +367,14 @@ export function CollectibleActions({
                   }
                 }}
               >
-                {busy ? "Waiting…" : "Confirm"}
+                {busy ? (
+                  <span className="inline-flex items-center gap-2">
+                    <span className="h-3 w-3 animate-spin border-2 border-paper-raised border-t-transparent" aria-hidden="true" />
+                    Waiting…
+                  </span>
+                ) : (
+                  "Confirm"
+                )}
               </button>
             </div>
           </div>

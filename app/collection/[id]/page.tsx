@@ -1,20 +1,30 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useMemo, useState } from "react";
 import { CatalogGrid } from "@/components/marketplace/CatalogGrid";
+import { CollectibleImage } from "@/components/collectibles/CollectibleImage";
+import { CountUp } from "@/components/ui/CountUp";
 import { useCatalog } from "@/hooks/useCatalog";
 import { CATEGORY_LABELS } from "@/lib/demo-data";
 import { explorerAddress } from "@/lib/web3/chain";
-import { shortAddress } from "@/lib/utils/format";
+import { cx, shortAddress } from "@/lib/utils/format";
 
 export default function CollectionDetailsPage() {
   const params = useParams<{ id: string }>();
   const { collections, collectibles, isLoading } = useCatalog();
+  const [tab, setTab] = useState<"all" | "listed">("all");
   const collection = collections.find((item) => item.id === params.id);
-  const items = collectibles.filter((item) => item.collectionId === params.id);
-  const listed = items.filter((item) => item.status === "listed");
+  const items = useMemo(() => collectibles.filter((item) => item.collectionId === params.id), [collectibles, params.id]);
+  const listed = useMemo(() => items.filter((item) => item.status === "listed"), [items]);
+
+  const stats = useMemo(() => {
+    const prices = listed.map((item) => Number(item.priceWei ?? 0) / 1e18).filter((p) => p > 0);
+    const minted = items.reduce((sum, item) => sum + item.minted, 0);
+    const supply = items.reduce((sum, item) => sum + item.maxSupply, 0);
+    return { floor: prices.length ? Math.min(...prices) : 0, minted, supply };
+  }, [items, listed]);
 
   if (!isLoading && !collection) {
     return (
@@ -27,60 +37,91 @@ export default function CollectionDetailsPage() {
     );
   }
 
-  if (!collection) return <div className="h-40 animate-pulse bg-line/50" />;
-
-  const local = collection.cover.startsWith("/");
+  if (!collection) return <div className="h-72 animate-pulse bg-line/50" />;
 
   return (
     <div className="flex flex-col gap-10">
-      <section className="grid gap-6 md:grid-cols-[16rem_1fr]">
-        <div className="relative aspect-square border border-line">
-          {local ? (
-            <Image src={collection.cover} alt={collection.name} fill className="object-cover" />
-          ) : collection.cover ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={collection.cover} alt={collection.name} className="h-full w-full object-cover" />
-          ) : (
-            <div className="h-full bg-line/40" />
-          )}
+      <section className="relative -mt-8 overflow-hidden border-b border-line pt-8 pb-10">
+        {collection.cover ? (
+          <div aria-hidden="true" className="absolute inset-0 scale-110 opacity-20 blur-2xl">
+            <CollectibleImage src={collection.cover} alt="" sizes="100vw" />
+          </div>
+        ) : null}
+        <div className="relative grid animate-fade-up gap-8 md:grid-cols-[15rem_1fr] md:items-end">
+          <div className="relative aspect-square border border-ink bg-paper shadow-[8px_8px_0_0_var(--ink)]">
+            <CollectibleImage src={collection.cover} alt={collection.name} sizes="240px" priority />
+          </div>
+          <div>
+            <p className="text-xs tracking-[0.2em] text-ink-soft uppercase">
+              {collection.source === "demo" ? "Demo collection" : "On-chain collection"} · {CATEGORY_LABELS[collection.category]}
+            </p>
+            <h1 className="display mt-2 text-6xl leading-none sm:text-7xl">{collection.name}</h1>
+            <p className="mt-4 max-w-2xl text-ink-soft">{collection.description}</p>
+            <p className="mt-4 text-sm">
+              by{" "}
+              <a
+                href={explorerAddress(collection.creator)}
+                className="font-mono text-xs underline-offset-4 hover:underline"
+                target="_blank"
+                rel="noreferrer"
+              >
+                {shortAddress(collection.creator)} ↗
+              </a>
+            </p>
+          </div>
         </div>
-        <div>
-          <p className="text-xs tracking-[0.2em] text-ink-soft uppercase">
-            {collection.source === "demo" ? "Demo collection" : "On-chain collection"}
-          </p>
-          <h1 className="display mt-2 text-5xl">{collection.name}</h1>
-          <p className="mt-4 max-w-2xl text-ink-soft">{collection.description}</p>
-          <dl className="mt-6 grid grid-cols-2 gap-4 text-sm sm:grid-cols-3">
-            <div>
-              <dt className="text-ink-soft">Creator</dt>
-              <dd>
-                <a href={explorerAddress(collection.creator)} className="font-mono text-xs underline" target="_blank" rel="noreferrer">
-                  {shortAddress(collection.creator)}
-                </a>
-              </dd>
+        <dl className="relative mt-10 grid grid-cols-2 border border-line bg-paper-raised/80 backdrop-blur-sm sm:grid-cols-4">
+          {[
+            { label: "Editions", value: <CountUp value={items.length} /> },
+            { label: "Listed", value: <CountUp value={listed.length} /> },
+            { label: "Minted", value: <span><CountUp value={stats.minted} /><span className="text-ink-soft"> / {stats.supply}</span></span> },
+            { label: "Floor (ETH)", value: <CountUp value={stats.floor} decimals={3} /> },
+          ].map((stat, index) => (
+            <div key={stat.label} className={cx("p-4", index > 0 && "border-l border-line", index === 2 && "max-sm:border-l-0 max-sm:border-t", index === 3 && "max-sm:border-t")}>
+              <dt className="text-xs tracking-[0.14em] text-ink-soft uppercase">{stat.label}</dt>
+              <dd className="display mt-1 text-3xl">{stat.value}</dd>
             </div>
-            <div>
-              <dt className="text-ink-soft">Category</dt>
-              <dd>{CATEGORY_LABELS[collection.category]}</dd>
-            </div>
-            <div>
-              <dt className="text-ink-soft">Items</dt>
-              <dd>{items.length}</dd>
-            </div>
-          </dl>
-        </div>
+          ))}
+        </dl>
       </section>
+
       <section>
-        <h2 className="display text-3xl">Listed</h2>
-        <div className="mt-4">
-          <CatalogGrid items={listed} empty="No active listings in this collection." />
+        <div className="mb-6 flex gap-1 border-b border-line" role="tablist">
+          {(
+            [
+              ["all", "All items", items.length],
+              ["listed", "Listed", listed.length],
+            ] as const
+          ).map(([key, label, count]) => (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              aria-selected={tab === key}
+              onClick={() => setTab(key)}
+              className={cx(
+                "relative flex h-12 items-center gap-2 px-4 transition-colors duration-200",
+                tab === key ? "text-ink" : "text-ink-soft hover:text-ink"
+              )}
+            >
+              {label}
+              <span className="font-mono text-[11px] text-ink-soft">{count}</span>
+              <span
+                aria-hidden="true"
+                className={cx(
+                  "absolute inset-x-0 -bottom-px h-[2px] bg-ink transition-transform duration-300",
+                  tab === key ? "scale-x-100" : "scale-x-0"
+                )}
+              />
+            </button>
+          ))}
         </div>
-      </section>
-      <section>
-        <h2 className="display text-3xl">All items</h2>
-        <div className="mt-4">
-          <CatalogGrid items={items} loading={isLoading} empty="This collection has no editions yet." />
-        </div>
+        <CatalogGrid
+          key={tab}
+          items={tab === "all" ? items : listed}
+          loading={isLoading}
+          empty={tab === "all" ? "This collection has no editions yet." : "No active listings in this collection."}
+        />
       </section>
     </div>
   );
